@@ -5,8 +5,9 @@
 
 class Alarme {
  public:
-    void On();
-    void Off();
+  Alarme();
+  void On();
+  void Off();
 
  private:
   const uint8_t PIN = 19;

@@ -1,22 +1,30 @@
 #include <Arduino.h>
 
-#include "clavier.h"
-#include "display.h"
 #include "alarme.h"
+#include "clavier.h"
+#include "screen.h"
 
-const byte pinInterrupteur = 18;
-const byte pinAlarme = 19;
-
-Display display;
+Screen screen;
 Clavier clavier;
 Alarme alarme;
 
-String currentTime = "00:00:00";
-byte currentHour = 0;
-byte currentMinute = 0;
-byte currentSecond = 0;
+// Time & alarm
+char currentTime[9] = "00:00:00";
+char alarmTime[9] = "00:00:00";
 
-String alarmTime = "00:00:00";
+uint8_t currentHour = 0;
+uint8_t currentMinute = 0;
+uint8_t currentSecond = 0;
+
+unsigned long lastMillis = 0;
+const long interval = 1000;
+
+const long lastBlinkMillis = 0;
+const long blinkInterval = 500;
+bool isBlinking = false;
+
+// Pin interrupteur
+const uint8_t pinInterrupteur = 18;
 
 void setup() {
   Serial.begin(115200);
@@ -25,49 +33,61 @@ void setup() {
   pinMode(pinInterrupteur, INPUT_PULLUP);
 
   // Ecran
-  display.On();
+  screen.Init();
 
   // Alarme off au démarrage
-  digitalWrite(pinAlarme, HIGH);
+  alarme.Off();
 }
-
-String buffer1;
-String buffer2;
 
 void loop() {
   if (digitalRead(pinInterrupteur) == HIGH) {  // Eteint
-    display.Off();
+    screen.Off();
+    alarme.Off();
     return;
+  } else {  // Allumé
+    screen.On();
   }
 
-  currentTime = String(currentHour) + ":" + String(currentMinute) + ":" +
-                String(currentSecond);
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastMillis >= interval) {  // Update time
+    lastMillis = currentMillis;
 
-  if (clavier.IsSettingTime()) {  // Reglage de l'heure
+    currentSecond++;
+    if (currentSecond == 60) {
+      currentSecond = 0;
+      currentMinute++;
+    }
+    if (currentMinute == 60) {
+      currentMinute = 0;
+      currentHour++;
+    }
+    if (currentHour == 24) {
+      currentHour = 0;
+    }
 
-    display.Clear();
-    display.Show(0, 1, "Reglage heure :");
+    // Format
+    sprintf(currentTime, "%02d:%02d:%02d", currentHour, currentMinute,
+            currentSecond);
+  }
 
-  } else if (clavier.IsSettingAlarm()) {  // Reglage de l'alarme
+  char key = clavier.GetKey();  // Update clavier
+  if (key == '*') {             // Reglage de l'heure
 
-    display.Clear();
-    display.Show(0, 1, "Reglage alarme :");
+    } else if (key == '#') {  // Reglage de l'alarme
 
   } else {
-    buffer1 = "Heure : " + currentTime;
-    display.Show(0, 0, buffer1.c_str());
+    char buffer1[20];
+    sprintf(buffer1, "--- %s ---", currentTime);
+    screen.Show(0, 0, buffer1);
 
-    buffer2 = "Alarme : " + alarmTime;
-    display.Show(0, 1, buffer2.c_str());
+    char buffer2[20];
+    sprintf(buffer2, " !  %s  ! ", alarmTime);
+    screen.Show(0, 1, buffer2);
   }
 
-  /*
-  if (digitalRead(pinInterrupteur) == LOW) {  // Alarme
-    digitalWrite(pinAlarme, LOW);
+  if (strcmp(currentTime, alarmTime) == 0) {  // Alarme
+    alarme.On();
   } else {
-    digitalWrite(pinAlarme, HIGH);
+    alarme.Off();
   }
-  */
 }
-
-void SetAlarm(int time) {}

@@ -8,8 +8,6 @@ class Clavier {
  public:
   Clavier();
   char GetKey();
-  bool IsSettingTime();
-  bool IsSettingAlarm();
 
  private:
   static const byte ROWS = 4;
@@ -22,8 +20,6 @@ class Clavier {
   byte colPins[COLS] = {27, 14, 12};
 
   Keypad keypad;
-  bool isSettingTime;
-  bool isSettingAlarm;
 };
 
 #endif

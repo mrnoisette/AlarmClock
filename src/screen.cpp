@@ -1,4 +1,4 @@
-#include "display.h"
+#include "screen.h"
 
 const uint8_t SDA_PIN = 21;
 const uint8_t SCL_PIN = 22;
@@ -8,19 +8,24 @@ const uint8_t LCD_ROWS = 2;
 
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
 
-void Display::On() {
+void Screen::Init() {
   Wire.begin(SDA_PIN, SCL_PIN);
   lcd.init();
+}
+
+void Screen::On() {
+  lcd.display();
   lcd.backlight();
 }
 
-void Display::Off(){
-  lcd.off();
+void Screen::Off(){
+  lcd.noDisplay();
+  lcd.noBacklight();
 }
 
-void Display::Show(uint8_t col, uint8_t row, const char* text) {
+void Screen::Show(uint8_t col, uint8_t row, const char* text) {
   lcd.setCursor(col, row);
   lcd.print(text);
 }
 
-void Display::Clear() { lcd.clear(); }
+void Screen::Clear() { lcd.clear(); }
