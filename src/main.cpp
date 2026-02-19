@@ -10,7 +10,7 @@ Alarme alarme;
 
 // Time & alarm
 char currentTime[9] = "00:00:00";
-char alarmTime[9] = "00:00:00";
+char alarmeTime[9] = "00:00:00";
 
 uint8_t currentHour = 0;
 uint8_t currentMinute = 0;
@@ -19,13 +19,14 @@ uint8_t currentSecond = 0;
 unsigned long lastMillis = 0;
 const long interval = 1000;
 
-const long lastBlinkMillis = 0;
-const long blinkInterval = 500;
+long lastBlinkMillis = 0;
+long blinkInterval = 500;
 bool isBlinking = false;
 
 // Pin interrupteur
 const uint8_t pinInterrupteur = 18;
 
+// --- SETUP ---
 void setup() {
   Serial.begin(115200);
 
@@ -39,17 +40,24 @@ void setup() {
   alarme.Off();
 }
 
-void loop() {
-  if (digitalRead(pinInterrupteur) == HIGH) {  // Eteint
+bool isSettingTime = false;
+bool isSettingAlarm = false;
+char lastKeyPressed;
+
+bool IsPowered() { return digitalRead(pinInterrupteur) == LOW; }
+
+void HandlePower() {
+  if (IsPowered()) {
+    screen.On();
+  } else {
     screen.Off();
     alarme.Off();
-    return;
-  } else {  // Allumé
-    screen.On();
   }
+}
 
+void UpdateTime() {
   unsigned long currentMillis = millis();
-  if (currentMillis - lastMillis >= interval) {  // Update time
+  if (currentMillis - lastMillis >= interval) {
     lastMillis = currentMillis;
 
     currentSecond++;
@@ -69,25 +77,76 @@ void loop() {
     sprintf(currentTime, "%02d:%02d:%02d", currentHour, currentMinute,
             currentSecond);
   }
+}
 
-  char key = clavier.GetKey();  // Update clavier
-  if (key == '*') {             // Reglage de l'heure
+void HandleKeypad() {
+  char key = clavier.GetKey();
 
-    } else if (key == '#') {  // Reglage de l'alarme
+  if (key == '#' && !isSettingTime && !isSettingAlarm) {
+    isSettingTime = true;
+  } else if (key == '*' && !isSettingTime && !isSettingAlarm) {
+    isSettingAlarm = true;
+  } else if (key == '#' && isSettingTime) {
+    isSettingTime = false;
+  } else if (key == '*' && isSettingAlarm) {
+    isSettingAlarm = false;
+  }
+}
 
+void UpdateBlink() {
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - lastBlinkMillis >= blinkInterval) {
+    lastBlinkMillis = currentMillis;
+    isBlinking = !isBlinking;
+  }
+}
+
+void DisplayScreen() {
+  bool isSetting = isSettingTime || isSettingAlarm;
+
+  if (isSetting) {
+    UpdateBlink();
   } else {
-    char buffer1[20];
-    sprintf(buffer1, "--- %s ---", currentTime);
-    screen.Show(0, 0, buffer1);
-
-    char buffer2[20];
-    sprintf(buffer2, " !  %s  ! ", alarmTime);
-    screen.Show(0, 1, buffer2);
+    isBlinking = true;  // toujours visible hors réglage
   }
 
-  if (strcmp(currentTime, alarmTime) == 0) {  // Alarme
+  char buffer1[20];
+  char buffer2[20];
+
+  // Ligne heure
+  if (isSettingTime && !isBlinking) {
+    sprintf(buffer1, "                ");
+  } else {
+    sprintf(buffer1, "--- %s ---", currentTime);
+  }
+
+  // Ligne alarme
+  if (isSettingAlarm && !isBlinking) {
+    sprintf(buffer2, "                ");
+  } else {
+    sprintf(buffer2, " !  %s  ! ", alarmeTime);
+  }
+
+  screen.Show(0, 0, buffer1);
+  screen.Show(0, 1, buffer2);
+}
+
+void CheckAlarm() {
+  if (strcmp(currentTime, alarmeTime) == 0) {
     alarme.On();
   } else {
     alarme.Off();
   }
+}
+
+// --- LOOP ---
+void loop() {
+  HandlePower();
+  if (!IsPowered()) return;
+
+  UpdateTime();
+  HandleKeypad();
+  DisplayScreen();
+  CheckAlarm();
 }

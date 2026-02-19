@@ -18,7 +18,7 @@ void Screen::On() {
   lcd.backlight();
 }
 
-void Screen::Off(){
+void Screen::Off() {
   lcd.noDisplay();
   lcd.noBacklight();
 }
